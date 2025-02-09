@@ -1,39 +1,55 @@
 pipeline {
     agent any
+    
+    environment {
+        DOCKER_HUB_CREDENTIALS = '172d7ca7-7c1a-49fd-be09-f66d2abfbeca' // Jenkins credentials for Docker Hub
+        DOCKER_REGISTRY_DEV = 'saisiddani/dev' // Docker Hub repo for dev images
+        DOCKER_REGISTRY_PROD = 'saisiddani/prod' // Docker Hub repo for prod images
+    }
+
     stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the code from the GitHub repository
+                git branch: "${GIT_BRANCH}", url: 'https://github.com/Sai-Siddani1313/Finalproject.git'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh './build.sh'
+                    // Build Docker image
+                    def image = docker.build("myapp:${env.BRANCH_NAME}")
                 }
             }
         }
-        stage('Push to Docker Hub (Dev)') {
-            when {
-                branch 'dev'
-            }
+
+        stage('Push Docker Image to Docker Hub') {
             steps {
                 script {
-                    sh 'docker push saisiddani/dev:latest'
+                    // Check the branch name to push to the appropriate repo
+                    if (env.BRANCH_NAME == 'dev') {
+                        // Push to the dev repository
+                        docker.withRegistry('', DOCKER_HUB_CREDENTIALS) {
+                            docker.image("myapp:${env.BRANCH_NAME}").push('latest')
+                        }
+                    } else if (env.BRANCH_NAME == 'master') {
+                        // Push to the prod repository
+                        docker.withRegistry('', DOCKER_HUB_CREDENTIALS) {
+                            docker.image("myapp:${env.BRANCH_NAME}").push('latest')
+                        }
+                    }
                 }
             }
         }
-        stage('Push to Docker Hub (Prod)') {
-            when {
-                branch 'master'
-            }
-            steps {
-                script {
-                    sh 'docker push saisiddani/prod:latest'
-                }
-            }
+    }
+
+    post {
+        success {
+            echo "Docker image successfully built and pushed."
         }
-        stage('Deploy to Server') {
-            steps {
-                script {
-                    sh './deploy.sh'
-                }
-            }
+        failure {
+            echo "Build or Docker push failed."
         }
     }
 }
