@@ -1,0 +1,40 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh './build.sh'
+                }
+            }
+        }
+        stage('Push to Docker Hub (Dev)') {
+            when {
+                branch 'dev'
+            }
+            steps {
+                script {
+                    sh 'docker push saisiddani/dev:latest'
+                }
+            }
+        }
+        stage('Push to Docker Hub (Prod)') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    sh 'docker push saisiddani/prod:latest'
+                }
+            }
+        }
+        stage('Deploy to Server') {
+            steps {
+                script {
+                    sh './deploy.sh'
+                }
+            }
+        }
+    }
+}
+
